@@ -80,7 +80,7 @@ typedef struct {
 } st7735_cfg_t;
 
 st7735_handle_t st7735_init(st7735_cfg_t *config);
-stm_err_t st7735_fill(st7735_handle_t handle, uint16_t color);
+stm_err_t st7735_fill_screen(st7735_handle_t handle, uint16_t color);
 
 #ifdef __cplusplus
 }
