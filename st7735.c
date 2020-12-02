@@ -80,7 +80,16 @@
 #define ST7735_INIT_ERR_STR				"st7735 init error"
 #define ST7735_WRITE_CMD_ERR_STR		"st7735 write command error"
 #define ST7735_WRITE_DATA_ERR_STR		"st7735 write data error"
-#define ST7735_FILL_ERR_STR				"st7735 file error"
+#define ST7735_FILL_SCREEN_ERR_STR		"st7735 file error"
+#define ST7735_DRAW_PIXEL_ERR_STR		"st7735 draw pixel error"
+#define ST7735_DRAW_LINE_ERR_STR 		"st7735 draw line error"
+#define ST7735_DRAW_CIRCLE_ERR_STR 		"st7735 draw circle error"
+#define ST7735_DRAW_REC_ERR_STR 		"st7735 draw rectangle error"
+#define ST7735_DRAW_IMG_ERR_STR 		"st7735 draw image error"
+#define ST7735_WRITE_CHAR_ERR_STR 		"st7735 write character error"
+#define ST7735_WRITE_STR_ERR_STR 		"st7735 write string error"
+
+#define ST7735_SET_ADDR_ERR_STR 		"st7735 set address error"
 
 #define mutex_lock(x)			while (xSemaphoreTake(x, portMAX_DELAY) != pdPASS)
 #define mutex_unlock(x) 		xSemaphoreGive(x)
@@ -231,7 +240,7 @@ static void _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
 	}
 }
 
-static void _set_addr(st7735_hw_info_t hw_info, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+static stm_err_t _set_addr(st7735_hw_info_t hw_info, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 {
 	uint8_t data[4];
 
@@ -239,15 +248,17 @@ static void _set_addr(st7735_hw_info_t hw_info, uint8_t x0, uint8_t y0, uint8_t 
 	data[1] = x0 + ST7735_XSTART;
 	data[2] = 0x00;
 	data[3] = x1 + ST7735_XSTART;
-	_write_cmd(hw_info, ST7735_SET_COLUMN_ADDR);
-	_write_data(hw_info, data, 4);
+	ST7735_CHECK(!_write_cmd(hw_info, ST7735_SET_COLUMN_ADDR), ST7735_SET_ADDR_ERR_STR, return STM_FAIL);
+	ST7735_CHECK(!_write_data(hw_info, data, 4), ST7735_SET_ADDR_ERR_STR, return STM_FAIL);
 
 	data[1] = y0 + ST7735_YSTART;
 	data[3] = y1 + ST7735_YSTART;
-	_write_cmd(hw_info, ST7735_SET_ROW_ADDR);
-	_write_data(hw_info, data, 4);
+	ST7735_CHECK(!_write_cmd(hw_info, ST7735_SET_ROW_ADDR), ST7735_SET_ADDR_ERR_STR, return STM_FAIL);
+	ST7735_CHECK(!_write_data(hw_info, data, 4), ST7735_SET_ADDR_ERR_STR, return STM_FAIL);
 
-	_write_cmd(hw_info, ST7735_RAMWR);
+	ST7735_CHECK(!_write_cmd(hw_info, ST7735_RAMWR), ST7735_SET_ADDR_ERR_STR, return STM_FAIL);
+
+	return STM_OK;
 }
 
 static void _select_with_pincs(st7735_hw_info_t hw_info, select_t select)
@@ -373,20 +384,37 @@ st7735_handle_t st7735_init(st7735_cfg_t *config)
 
 stm_err_t st7735_fill_screen(st7735_handle_t handle, uint16_t color)
 {
-	ST7735_CHECK(handle, ST7735_FILL_ERR_STR, return STM_ERR_INVALID_ARG);
+	ST7735_CHECK(handle, ST7735_FILL_SCREEN_ERR_STR, return STM_ERR_INVALID_ARG);
 
 	mutex_lock(handle->lock);
 	handle->_select(handle->hw_info, SELECT_ENABLE);
 
-	_set_addr(handle->hw_info, 0, 0, handle->width - 1, handle->height - 1);
+	ST7735_CHECK(!_set_addr(handle->hw_info, 0, 0, handle->width - 1, handle->height - 1), ST7735_FILL_SCREEN_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 
 	uint8_t data[2] = { color >> 8, color & 0xFF };
-
 	for (uint8_t heigt_idx = 0; heigt_idx < handle->height; heigt_idx++) {
 		for (uint8_t width_idx = 0; width_idx < handle->width; width_idx++) {
-			_write_data(handle->hw_info, data, 2);
+			ST7735_CHECK(!_write_data(handle->hw_info, data, 2), ST7735_FILL_SCREEN_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 		}
 	}
+
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
+stm_err_t st7735_draw_pixel(st7735_handle_t handle, uint8_t x, uint8_t y, uint16_t color)
+{
+	ST7735_CHECK(handle, ST7735_DRAW_PIXEL_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	ST7735_CHECK(!_set_addr(handle->hw_info, x, y, x+1, y+1), ST7735_DRAW_PIXEL_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+
+	uint8_t data[2] = { color >> 8, color & 0xFF };
+	ST7735_CHECK(!_write_data(handle->hw_info, data, 2), ST7735_DRAW_PIXEL_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 
 	handle->_select(handle->hw_info, SELECT_DISABLE);
 	mutex_unlock(handle->lock);
