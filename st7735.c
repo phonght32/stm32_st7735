@@ -321,6 +321,59 @@ static uint8_t _get_screen_height(st7735_rot_t rot, st7735_size_t size)
 	}
 }
 
+static stm_err_t _draw_pixel(st7735_hw_info_t hw_info, uint8_t x, uint8_t y, uint16_t color)
+{
+	if (_set_addr(hw_info, x, y, x + 1, y + 1)) {
+		return STM_FAIL;
+	}
+
+	uint8_t data[2] = { color >> 8, color & 0xFF };
+	if (_write_data(hw_info, data, 2)) {
+		return STM_FAIL;
+	}
+
+	return STM_OK;
+
+}
+
+static stm_err_t _draw_line(st7735_hw_info_t hw_info, uint8_t x_start, uint8_t y_start, uint8_t x_end, uint8_t y_end, uint16_t color)
+{
+	int32_t deltaX = abs(x_end - x_start);
+	int32_t deltaY = abs(y_end - y_start);
+	int32_t signX = ((x_start < x_end) ? 1 : -1);
+	int32_t signY = ((y_start < y_end) ? 1 : -1);
+	int32_t error = deltaX - deltaY;
+	int32_t error2;
+
+	if (_draw_pixel(hw_info, x_end, y_end, color)) {
+		return STM_FAIL;
+	}
+
+	while ((x_start != x_end) || (y_start != y_end))
+	{
+		if (_draw_pixel(hw_info, x_start, y_start, color)) {
+			return STM_FAIL;
+		}
+
+		error2 = error * 2;
+		if (error2 > -deltaY) {
+			error -= deltaY;
+			x_start += signX;
+		} else {
+			/*nothing to do*/
+		}
+
+		if (error2 < deltaX) {
+			error += deltaX;
+			y_start += signY;
+		} else {
+			/*nothing to do*/
+		}
+	}
+
+	return STM_OK;
+}
+
 static void _clean_up(st7735_handle_t handle)
 {
 	free(handle);
@@ -411,10 +464,39 @@ stm_err_t st7735_draw_pixel(st7735_handle_t handle, uint8_t x, uint8_t y, uint16
 	mutex_lock(handle->lock);
 	handle->_select(handle->hw_info, SELECT_ENABLE);
 
-	ST7735_CHECK(!_set_addr(handle->hw_info, x, y, x+1, y+1), ST7735_DRAW_PIXEL_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	ST7735_CHECK(!_draw_pixel(handle->hw_info, x, y, color), ST7735_DRAW_PIXEL_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
 
-	uint8_t data[2] = { color >> 8, color & 0xFF };
-	ST7735_CHECK(!_write_data(handle->hw_info, data, 2), ST7735_DRAW_PIXEL_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	return STM_OK;
+}
+
+stm_err_t st7735_draw_line(st7735_handle_t handle, uint8_t x_start, uint8_t y_start, uint8_t x_end, uint8_t y_end, uint16_t color)
+{
+	ST7735_CHECK(handle, ST7735_DRAW_LINE_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	ST7735_CHECK(!_draw_line(handle->hw_info, x_start, y_start, x_end, y_end, color), ST7735_DRAW_LINE_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
+stm_err_t st7735_draw_rectangle(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t width, uint8_t height, uint16_t color)
+{
+	ST7735_CHECK(handle, ST7735_DRAW_REC_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	ST7735_CHECK(!_draw_line(handle->hw_info, x_origin, y_origin, x_origin + width, y_origin, color), ST7735_DRAW_REC_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	ST7735_CHECK(!_draw_line(handle->hw_info, x_origin + width, y_origin, x_origin + width, y_origin + height, color), ST7735_DRAW_REC_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	ST7735_CHECK(!_draw_line(handle->hw_info, x_origin + width, y_origin + height, x_origin, y_origin + height, color), ST7735_DRAW_REC_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	ST7735_CHECK(!_draw_line(handle->hw_info, x_origin, y_origin + height, x_origin, y_origin, color), ST7735_DRAW_REC_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 
 	handle->_select(handle->hw_info, SELECT_DISABLE);
 	mutex_unlock(handle->lock);

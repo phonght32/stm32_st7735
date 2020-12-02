@@ -82,6 +82,8 @@ typedef struct {
 st7735_handle_t st7735_init(st7735_cfg_t *config);
 stm_err_t st7735_fill_screen(st7735_handle_t handle, uint16_t color);
 stm_err_t st7735_draw_pixel(st7735_handle_t handle, uint8_t x, uint8_t y, uint16_t color);
+stm_err_t st7735_draw_line(st7735_handle_t handle, uint8_t x_start, uint8_t y_start, uint8_t x_end, uint8_t y_end, uint16_t color);
+stm_err_t st7735_draw_rectangle(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t width, uint8_t height, uint16_t color);
 
 #ifdef __cplusplus
 }
