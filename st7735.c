@@ -504,3 +504,49 @@ stm_err_t st7735_draw_rectangle(st7735_handle_t handle, uint8_t x_origin, uint8_
 	return STM_OK;
 }
 
+stm_err_t st7735_draw_circle(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t radius, uint16_t color)
+{
+	ST7735_CHECK(handle, ST7735_DRAW_CIRCLE_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	int32_t x = -radius;
+	int32_t y = 0;
+	int32_t err = 2 - 2 * radius;
+	int32_t e2;
+
+	do {
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
+
+		e2 = err;
+		if (e2 <= y) {
+			y++;
+			err = err + (y * 2 + 1);
+			if (-x == y && e2 <= x) {
+				e2 = 0;
+			}
+			else {
+				/*nothing to do*/
+			}
+		} else {
+			/*nothing to do*/
+		}
+
+		if (e2 > x) {
+			x++;
+			err = err + (x * 2 + 1);
+		} else {
+			/*nothing to do*/
+		}
+	} while (x <= 0);
+
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
