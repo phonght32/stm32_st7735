@@ -86,6 +86,8 @@ stm_err_t st7735_draw_line(st7735_handle_t handle, uint8_t x_start, uint8_t y_st
 stm_err_t st7735_draw_rectangle(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t width, uint8_t height, uint16_t color);
 stm_err_t st7735_draw_circle(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t radius, uint16_t color);
 stm_err_t st7735_draw_image(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t width, uint8_t height, uint8_t *image_src);
+stm_err_t st7735_set_position(st7735_handle_t handle, uint8_t x, uint8_t y);
+stm_err_t st7735_get_position(st7735_handle_t handle, uint8_t *x, uint8_t *y);
 
 #ifdef __cplusplus
 }

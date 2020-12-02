@@ -88,8 +88,9 @@
 #define ST7735_DRAW_IMG_ERR_STR 		"st7735 draw image error"
 #define ST7735_WRITE_CHAR_ERR_STR 		"st7735 write character error"
 #define ST7735_WRITE_STR_ERR_STR 		"st7735 write string error"
-
 #define ST7735_SET_ADDR_ERR_STR 		"st7735 set address error"
+#define ST7735_SET_POSITION_ERR_STR		"st7735 set position error"
+#define ST7735_GET_POSITION_ERR_STR		"st7735 get position error"
 
 #define mutex_lock(x)			while (xSemaphoreTake(x, portMAX_DELAY) != pdPASS)
 #define mutex_unlock(x) 		xSemaphoreGive(x)
@@ -562,6 +563,30 @@ stm_err_t st7735_draw_image(st7735_handle_t handle, uint8_t x_origin, uint8_t y_
 	ST7735_CHECK(!_write_data(handle->hw_info, image_src, width * height * 2), ST7735_DRAW_IMG_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 
 	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
+stm_err_t st7735_set_position(st7735_handle_t handle, uint8_t x, uint8_t y)
+{
+	ST7735_CHECK(handle, ST7735_SET_POSITION_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->cur_x = x;
+	handle->cur_y = y;
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
+stm_err_t st7735_get_position(st7735_handle_t handle, uint8_t *x, uint8_t *y)
+{
+	ST7735_CHECK(handle, ST7735_GET_POSITION_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	*x = handle->cur_x;
+	*y = handle->cur_y;
 	mutex_unlock(handle->lock);
 
 	return STM_OK;
