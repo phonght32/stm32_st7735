@@ -32,8 +32,8 @@
 #define ST7735_INVON   0x21
 #define ST7735_DISPOFF 0x28
 #define ST7735_DISPON  0x29
-#define ST7735_CASET   0x2A
-#define ST7735_RASET   0x2B
+#define ST7735_SET_COLUMN_ADDR   0x2A
+#define ST7735_SET_ROW_ADDR   0x2B
 #define ST7735_RAMWR   0x2C
 #define ST7735_RAMRD   0x2E
 
@@ -134,10 +134,10 @@ static uint8_t init_cmds1[] = {
 
 uint8_t init_cmds2[] = {            // Init for 7735R, part 2 (1.44" display)
 	2,                        //  2 commands in list:
-	ST7735_CASET  , 4      ,  //  1: Column addr set, 4 args, no delay:
+	ST7735_SET_COLUMN_ADDR  , 4      ,  //  1: Column addr set, 4 args, no delay:
 	0x00, 0x00,             //     XSTART = 0
 	0x00, 0x7F,             //     XEND = 127
-	ST7735_RASET  , 4      ,  //  2: Row addr set, 4 args, no delay:
+	ST7735_SET_ROW_ADDR  , 4      ,  //  2: Row addr set, 4 args, no delay:
 	0x00, 0x00,             //     XSTART = 0
 	0x00, 0x7F
 };           //     XEND = 127
@@ -233,17 +233,20 @@ static void _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
 
 static void _set_addr(st7735_hw_info_t hw_info, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 {
-	_write_cmd(hw_info, ST7735_CASET);
-	uint8_t data[] = { 0x00, x0 + ST7735_XSTART, 0x00, x1 + ST7735_XSTART };
+	uint8_t data[4];
+
+	data[0] = 0x00;
+	data[1] = x0 + ST7735_XSTART;
+	data[2] = 0x00;
+	data[3] = x1 + ST7735_XSTART;
+	_write_cmd(hw_info, ST7735_SET_COLUMN_ADDR);
 	_write_data(hw_info, data, 4);
 
-	// row address set
-	_write_cmd(hw_info, ST7735_RASET);
 	data[1] = y0 + ST7735_YSTART;
 	data[3] = y1 + ST7735_YSTART;
+	_write_cmd(hw_info, ST7735_SET_ROW_ADDR);
 	_write_data(hw_info, data, 4);
 
-	// write to RAM
 	_write_cmd(hw_info, ST7735_RAMWR);
 }
 
@@ -374,7 +377,7 @@ stm_err_t st7735_fill(st7735_handle_t handle, uint16_t color)
 
 	mutex_lock(handle->lock);
 	handle->_select(handle->hw_info, SELECT_ENABLE);
-	
+
 	_set_addr(handle->hw_info, 0, 0, handle->width - 1, handle->height - 1);
 
 	uint8_t data[2] = { color >> 8, color & 0xFF };
