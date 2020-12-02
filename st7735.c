@@ -517,10 +517,10 @@ stm_err_t st7735_draw_circle(st7735_handle_t handle, uint8_t x_origin, uint8_t y
 	int32_t e2;
 
 	do {
-		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
-		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
-		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
-		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR,{mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin + y, color), ST7735_DRAW_CIRCLE_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin + x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+		ST7735_CHECK(!_draw_pixel(handle->hw_info, x_origin - x, y_origin - y, color), ST7735_DRAW_CIRCLE_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
 
 		e2 = err;
 		if (e2 <= y) {
@@ -550,3 +550,19 @@ stm_err_t st7735_draw_circle(st7735_handle_t handle, uint8_t x_origin, uint8_t y
 	return STM_OK;
 }
 
+stm_err_t st7735_draw_image(st7735_handle_t handle, uint8_t x_origin, uint8_t y_origin, uint8_t width, uint8_t height, uint8_t *image_src)
+{
+	ST7735_CHECK(handle, ST7735_DRAW_IMG_ERR_STR, return STM_ERR_INVALID_ARG);
+	ST7735_CHECK(image_src, ST7735_DRAW_IMG_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	ST7735_CHECK(!_set_addr(handle->hw_info, x_origin, y_origin, x_origin + width - 1, y_origin + height - 1), ST7735_DRAW_IMG_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+	ST7735_CHECK(!_write_data(handle->hw_info, image_src, width * height * 2), ST7735_DRAW_IMG_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
