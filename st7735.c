@@ -591,3 +591,8 @@ stm_err_t st7735_get_position(st7735_handle_t handle, uint8_t *x, uint8_t *y)
 
 	return STM_OK;
 }
+
+void st7735_destroy(st7735_handle_t handle)
+{
+	_clean_up(handle);
+}
