@@ -458,6 +458,36 @@ stm_err_t st7735_fill_screen(st7735_handle_t handle, uint16_t color)
 	return STM_OK;
 }
 
+stm_err_t st7735_write_char(st7735_handle_t handle, font_size_t font_size, uint8_t chr, uint16_t color)
+{
+	ST7735_CHECK(handle, ST7735_WRITE_CHAR_ERR_STR, return STM_ERR_INVALID_ARG);
+
+	mutex_lock(handle->lock);
+	handle->_select(handle->hw_info, SELECT_ENABLE);
+
+	font_t font;
+	ST7735_CHECK(get_font(chr, font_size, &font) > 0, ST7735_WRITE_CHAR_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+
+	uint8_t num_byte_per_row = font.data_len / font.height;
+	for (uint8_t height_idx = 0; height_idx < font.height; height_idx ++) {
+		for ( uint8_t byte_idx = 0; byte_idx < num_byte_per_row; byte_idx++) {
+			for (uint8_t width_idx = 0; width_idx < 8; width_idx++) {
+				uint8_t x = handle->cur_x + width_idx + byte_idx * 8;
+				uint8_t y = handle->cur_y + height_idx;
+				if (((font.data[height_idx * num_byte_per_row + byte_idx] << width_idx) & 0x80) == 0x80) {
+					ST7735_CHECK(!_draw_pixel(handle->hw_info, x, y, color), ST7735_WRITE_CHAR_ERR_STR, {mutex_unlock(handle->lock); return STM_FAIL;});
+				}
+			}
+		}
+	}
+
+	handle->cur_x += font.width + num_byte_per_row;
+	handle->_select(handle->hw_info, SELECT_DISABLE);
+	mutex_unlock(handle->lock);
+
+	return STM_OK;
+}
+
 stm_err_t st7735_draw_pixel(st7735_handle_t handle, uint8_t x, uint8_t y, uint16_t color)
 {
 	ST7735_CHECK(handle, ST7735_DRAW_PIXEL_ERR_STR, return STM_ERR_INVALID_ARG);
