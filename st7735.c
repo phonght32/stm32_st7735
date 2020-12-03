@@ -311,7 +311,7 @@ static void _reset(st7735_hw_info_t hw_info)
 	}
 }
 
-static void _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
+static stm_err_t _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
 {
 	uint8_t num_cmd, num_arg;
 	uint16_t delay_ms;
@@ -319,14 +319,18 @@ static void _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
 	num_cmd = *list_cmd++;
 	while (num_cmd--) {
 		uint8_t cmd = *list_cmd++;
-		_write_cmd(hw_info, cmd);
+		if(_write_cmd(hw_info, cmd)){
+			return STM_FAIL;
+		}
 
 		num_arg = *list_cmd++;
 		// If high bit set, delay follows args
 		delay_ms = num_arg & 0x80;
 		num_arg &= ~0x80;
 		if (num_arg) {
-			_write_data(hw_info, list_cmd, num_arg);
+			if(_write_data(hw_info, list_cmd, num_arg)) {
+				return STM_FAIL;
+			}
 			list_cmd += num_arg;
 		}
 
@@ -336,6 +340,8 @@ static void _write_list_cmd(st7735_hw_info_t hw_info, uint8_t *list_cmd)
 			vTaskDelay(delay_ms / portTICK_PERIOD_MS);
 		}
 	}
+
+	return STM_OK;
 }
 
 static stm_err_t _set_addr(st7735_hw_info_t hw_info, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
@@ -515,9 +521,9 @@ st7735_handle_t st7735_init(st7735_cfg_t *config)
 
 	_select(config->hw_info, SELECT_ENABLE);
 	_reset(config->hw_info);
-	_write_list_cmd(config->hw_info, init_cmds1);
-	_write_list_cmd(config->hw_info, init_cmds2);
-	_write_list_cmd(config->hw_info, init_cmds3);
+	ST7735_CHECK(!_write_list_cmd(config->hw_info, init_cmds1), ST7735_INIT_ERR_STR,{_clean_up(handle); return NULL;});
+	ST7735_CHECK(!_write_list_cmd(config->hw_info, init_cmds2), ST7735_INIT_ERR_STR,{_clean_up(handle); return NULL;});
+	ST7735_CHECK(!_write_list_cmd(config->hw_info, init_cmds3), ST7735_INIT_ERR_STR,{_clean_up(handle); return NULL;});
 	_select(config->hw_info, SELECT_DISABLE);
 
 	handle->hw_info = config->hw_info;
